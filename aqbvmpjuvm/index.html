@@ -326,23 +326,39 @@ function trilha(pista, z0, n, alturaFn) {
   if (Math.random() < .35) S.objs.push({ tipo: especial(), pista, z: z0 + n*1.4 + 1.2, y:.4, rot:0 });
 }
 function especial() { const r = Math.random(); return r < .3 ? 'envelope' : r < .5 ? 'lingote' : r < .68 ? 'tangerina' : r < .85 ? 'bombinha' : 'bolsa'; }
+function dificuldade() { return Math.min(1, S.t / 100 + S.moedas / 150); }
+function poeCarroca(pista, z) {              // carroça nunca fica em cima de moeda
+  S.objs = S.objs.filter(o => !(COL[o.tipo] && o.pista === pista && o.z > z - .8 && o.z < z + 1.6));
+  S.objs.push({ tipo:'carroca', pista, z });
+}
+// fileira extra entre as fileiras principais: no máximo 1 carroça, sempre sobra pista livre
+function miniLinha(z) {
+  const d = dificuldade(), p = [-1,0,1].sort(() => Math.random() - .5);
+  if (Math.random() < .55) {
+    poeCarroca(p[0], z);
+    if (Math.random() < d) S.objs.push({ tipo:'baixa', pista:p[1], z: z + .5 });
+  } else {
+    S.objs.push({ tipo:'baixa', pista:p[0], z }); S.objs.push({ tipo:'baixa', pista:p[1], z });
+    if (Math.random() < d * .7) S.objs.push({ tipo:'baixa', pista:p[2], z });
+  }
+}
 function linha(z) {
-  const nivel = Math.min(1, S.t / 90), r = Math.random();
+  const nivel = dificuldade(), r = Math.random();
   const pistas = [-1,0,1].sort(() => Math.random() - .5);
   if (r < .22) { // barreira baixa nas 3 pistas: tem que pular
     pistas.forEach(p => S.objs.push({ tipo:'baixa', pista:p, z }));
     trilha(pistas[0], z - 2.1, 4, i => .35 + Math.sin((i/3)*Math.PI) * .7);
   } else if (r < .42) { // faixas altas: deslizar
-    S.objs.push({ tipo:'baixa', pista:pistas[0], z }); S.objs.push({ tipo:'carroca', pista:pistas[1], z });
-    if (nivel > .3) S.objs.push({ tipo:'carroca', pista:pistas[2], z: z + 6 });
+    S.objs.push({ tipo:'baixa', pista:pistas[0], z }); poeCarroca(pistas[1], z);
+    if (nivel > .3) poeCarroca(pistas[2], z + 6);
     trilha(pistas[0], z - 2.1, 4, i => .35 + Math.sin((i/3)*Math.PI) * .7);
   } else if (r < .72) { // carroças: trocar de pista
-    S.objs.push({ tipo:'carroca', pista:pistas[0], z });
-    if (Math.random() < .5 + nivel*.4) S.objs.push({ tipo:'carroca', pista:pistas[1], z });
+    poeCarroca(pistas[0], z);
+    if (Math.random() < .5 + nivel*.4) poeCarroca(pistas[1], z);
     trilha(pistas[2], z - 2, 6);
     if (Math.random() < .25) S.objs.push({ tipo:especial(), pista:pistas[2], z: z + 7, y:.4, rot:0 });
   } else if (r < .88) { // mistura
-    S.objs.push({ tipo:'baixa', pista:pistas[0], z }); S.objs.push({ tipo:'carroca', pista:pistas[1], z: z + 5 });
+    S.objs.push({ tipo:'baixa', pista:pistas[0], z }); poeCarroca(pistas[1], z + 5);
     trilha(pistas[2], z - 2, 7);
   } else { // ziguezague de moedas
     let p = pistas[0];
@@ -386,8 +402,11 @@ function atualiza(dt) {
 
   // linhas novas
   while (S.proxLinha - S.dist < ZMAX) {
-    linha(S.proxLinha - S.dist);
-    S.proxLinha += Math.max(8, 17 - S.t * .08) + Math.random() * 4;
+    const d = dificuldade(), z = S.proxLinha - S.dist;
+    const vao = Math.max(9, S.vel * (1.35 - d * .55)) + Math.random() * 3;   // de ~1,4 s até ~0,8 s entre fileiras
+    linha(z);
+    if (S.t > 6 && Math.random() < .25 + d * .7) miniLinha(z + vao * .5);  // mais obstáculos conforme avança
+    S.proxLinha += vao;
   }
 
   const pp = proj(S.px, S.py, Z0);
