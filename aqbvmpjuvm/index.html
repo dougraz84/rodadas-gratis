@@ -302,16 +302,41 @@ addEventListener('keydown', e => { const a = MAPA[e.code]; if (a && window.__jog
 const bP = document.getElementById('bP');
 bP.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); acao('pausa'); });
 
-// botões separados: ◀ ▶ na esquerda, PULAR e ABAIXAR na direita (cada dedo independente)
+// botões: cada dedo é tratado sozinho, na hora do toque (dá para segurar ◀/▶ e apertar PULAR junto)
 const segurando = {};                                   // botão de lado segurado -> tempo até repetir
-[['bEsq','esq'],['bDir','dir'],['bPular','pula']].forEach(([id, a]) => {
-  const el = document.getElementById(id);
-  el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); el.classList.add('on'); acao(a);
-    if (a === 'esq' || a === 'dir') segurando[a] = .32; });
-  const solta = () => { el.classList.remove('on'); delete segurando[a]; };
-  ['pointerup','pointercancel','pointerleave'].forEach(ev => el.addEventListener(ev, solta));
-  el.addEventListener('contextmenu', e => e.preventDefault());
-});
+const CTL = [['bEsq','esq'],['bDir','dir'],['bPular','pula']].map(([id, a]) => ({ el: document.getElementById(id), a }));
+const dedos = new Map();                                // id do dedo -> controle
+function controleEm(x, y) {                             // área de toque um pouco maior que o botão
+  for (const c of CTL) {
+    if (c.el.classList.contains('esconde')) continue;
+    const r = c.el.getBoundingClientRect(), folga = r.width * .18;
+    if (x > r.left - folga && x < r.right + folga && y > r.top - folga && y < r.bottom + folga) return c;
+  }
+  return null;
+}
+function aperta(id, x, y) {
+  if (modo !== 'jogo') return false;
+  const c = controleEm(x, y); if (!c) return false;
+  dedos.set(id, c); c.el.classList.add('on'); acao(c.a);
+  if (c.a === 'esq' || c.a === 'dir') segurando[c.a] = .32;
+  return true;
+}
+function solta(id) {
+  const c = dedos.get(id); if (!c) return; dedos.delete(id);
+  if (![...dedos.values()].includes(c)) { c.el.classList.remove('on'); delete segurando[c.a]; }
+}
+const telaJogo = document.getElementById('tela');
+// toque (celular): touchstart chega na hora, um evento por dedo
+telaJogo.addEventListener('touchstart', e => {
+  let usou = false;
+  for (const t of e.changedTouches) if (aperta('t' + t.identifier, t.clientX, t.clientY)) usou = true;
+  if (usou) e.preventDefault();
+}, { passive: false });
+['touchend', 'touchcancel'].forEach(ev => telaJogo.addEventListener(ev, e => { for (const t of e.changedTouches) solta('t' + t.identifier); }));
+// mouse e caneta
+telaJogo.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') return; if (aperta('p' + e.pointerId, e.clientX, e.clientY)) e.preventDefault(); });
+['pointerup', 'pointercancel'].forEach(ev => addEventListener(ev, e => { if (e.pointerType !== 'touch') solta('p' + e.pointerId); }));
+CTL.forEach(c => { c.el.addEventListener('contextmenu', e => e.preventDefault()); c.el.style.pointerEvents = 'none'; });
 function repeteAnalog(dt) {                             // segurando ◀ ou ▶: continua trocando de pista
   for (const a in segurando) { segurando[a] -= dt; if (segurando[a] <= 0) { acao(a); segurando[a] = .32; } }
 }
@@ -399,7 +424,7 @@ function atualiza(dt) {
   const dz = S.vel * dt; S.dist += dz;
   S.pontos = Math.floor(S.dist * 2) + S.moedas * 10;
 
-  S.px += (S.pista * LW - S.px) * Math.min(1, dt * 14);
+  S.px += (S.pista * LW - S.px) * Math.min(1, dt * 24);
   S.vy -= 16 * dt; S.py = Math.max(0, S.py + S.vy * dt); if (S.py === 0) S.vy = Math.max(0, S.vy);
   S.bufPulo = Math.max(0, (S.bufPulo || 0) - dt); if (S.bufPulo > 0 && S.py === 0) pular();
   repeteAnalog(dt);
