@@ -430,7 +430,6 @@ function atualiza(dt) {
     const mesmaPista = Math.abs(S.px - o.pista * LW) < LW * .55;
     if (COL[o.tipo]) {
       if (o.pf === undefined) o.pf = o.pista;
-      if (S.ima > 0 && o.z < Z0 + 9 && o.z > Z0 - .6) { const k = Math.min(1, dt * 9); o.pf += (S.px / LW - o.pf) * k; o.y += (S.py + .4 - o.y) * k; }
       const naPista = Math.abs(S.px - o.pf * LW) < LW * .55;
       if (naPista && Math.abs(o.z - Z0) < .55 && Math.abs((S.py + (S.desliza ? .2 : .4)) - o.y) < .6) pega(o, pp);
       continue;
@@ -452,7 +451,7 @@ function atualiza(dt) {
     }
   }
   S.objs = S.objs.filter(o => o.z > 1.8 && !(o.feito && COL[o.tipo]));
-  S.ima = Math.max(0, (S.ima || 0) - dt);
+  S.dobro = Math.max(0, (S.dobro || 0) - dt);
   S.parts.forEach(q => { q.x += q.vx*dt; q.y += q.vy*dt; q.vy += 900*dt; q.vida -= dt; });
   S.parts = S.parts.filter(q => q.vida > 0);
   S.textos.forEach(t => { t.y -= 110*dt; t.vida -= dt; });
@@ -461,14 +460,15 @@ function atualiza(dt) {
 function pega(o, pp) {
   o.feito = true; S.combo++; S.comboT = 1.2;
   const p = proj(o.pf * LW, o.y, o.z);
-  const fx = (n, txt, cor, c1, c2) => { S.moedas += n; faisca(p.x, p.y, c1, 16); faisca(p.x, p.y, c2, 10); texto(p.x, p.y - 40, txt, cor, 44); };
+  const x2 = S.dobro > 0 ? 2 : 1;
+  const fx = (n, txt, cor, c1, c2) => { S.moedas += n * x2; if (x2 > 1) txt += ' x2'; faisca(p.x, p.y, c1, 16); faisca(p.x, p.y, c2, 10); texto(p.x, p.y - 40, txt, cor, 44); };
   if (o.tipo === 'envelope') { SOM.envelope(); fx(5, '+5 • Envelope!', '#ff7070', '#ff3b3b', '#ffd23a'); }
   else if (o.tipo === 'lingote') { SOM.envelope(); fx(3, '+3 • Lingote!', '#ffe07a', '#ffd23a', '#fff6c0'); }
   else if (o.tipo === 'bolsa') { SOM.envelope(); setTimeout(SOM.envelope, 220); fx(10, '+10 • Bolsa da Sorte!', '#ffe07a', '#ff3b3b', '#ffd23a'); S.treme = .15; }
   else if (o.tipo === 'tangerina') { bip(660,.3,'triangle',.14,990);
     if (S.vidas < 3) { S.vidas++; faisca(p.x, p.y, '#ff9a2a', 16); texto(p.x, p.y - 40, '+1 VIDA', '#ffb35a', 48); } else fx(2, '+2 • Tangerina', '#ffb35a', '#ff9a2a', '#3fae5a'); }
-  else if (o.tipo === 'bombinha') { S.ima = 6; bip(400,.5,'sine',.14,1200); faisca(p.x, p.y, '#ff4a2a', 22); faisca(p.x, p.y, '#ffd23a', 14); texto(p.x, p.y - 40, 'ÍMÃ DE MOEDAS!', '#ffe07a', 48); }
-  else { S.moedas++; SOM.moeda(S.combo); faisca(p.x, p.y, '#ffd23a', 7); if (S.combo % 10 === 0) texto(W/2, 360, S.combo + ' seguidas!', '#ffe07a', 50); }
+  else if (o.tipo === 'bombinha') { S.dobro = 6; bip(400,.5,'sine',.14,1200); faisca(p.x, p.y, '#ff4a2a', 22); faisca(p.x, p.y, '#ffd23a', 14); texto(p.x, p.y - 40, 'MOEDAS EM DOBRO!', '#ffe07a', 48); }
+  else { S.moedas += x2; SOM.moeda(S.combo); faisca(p.x, p.y, '#ffd23a', 7); if (S.combo % 10 === 0) texto(W/2, 360, S.combo + ' seguidas!', '#ffe07a', 50); }
 }
 
 // ---------- desenho ----------
@@ -756,7 +756,7 @@ function hud() {
   g.fillStyle = '#4a2a20'; g.font = '36px "Arial Black",sans-serif'; g.textAlign = 'left'; g.fillText(S.moedas, W - 180, 84);
   g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '20px "Arial Black",sans-serif'; g.textAlign = 'right';
   g.fillText('VELOCIDADE ' + (S.vel / 11).toFixed(1) + 'x', W - 30, 146);
-  if (S.ima > 0) { g.fillStyle = '#ffe07a'; g.fillText('ÍMÃ ' + S.ima.toFixed(1) + 's', W - 30, 176); }
+  if (S.dobro > 0) { g.fillStyle = '#ffe07a'; g.fillText('MOEDAS x2 · ' + S.dobro.toFixed(1) + 's', W - 30, 176); }
 }
 function coracao(x, y, cheio) {
   g.fillStyle = cheio ? '#e8303a' : 'rgba(150,120,120,.35)';
@@ -910,7 +910,7 @@ function telaInicio(t) {
   g.fillStyle = '#e0a526'; rr(66, ty, W - 132, th, 30); g.fill();
   const gt = g.createLinearGradient(0, ty, 0, ty + th); gt.addColorStop(0, '#c42024'); gt.addColorStop(1, '#8e1016');
   g.fillStyle = gt; rr(74, ty + 8, W - 148, th - 16, 24); g.fill();
-  [['moeda', '+1'], ['lingote', '+3'], ['envelope', '+5'], ['bolsa', '+10'], ['tangerina', 'vida'], ['bombinha', 'ímã']].forEach(([tp, v], i) => {
+  [['moeda', '+1'], ['lingote', '+3'], ['envelope', '+5'], ['bolsa', '+10'], ['tangerina', 'vida'], ['bombinha', 'x2']].forEach(([tp, v], i) => {
     const ix = 128 + i * 93, ip = { x: ix, y: ty + 64, s: 270 };
     if (tp === 'moeda') moeda(ip, Math.sin(t * 2) * .4); else if (tp === 'envelope') envelope(ip, t * 2); else if (tp === 'lingote') lingote(ip, t * 2);
     else if (tp === 'bolsa') bolsa(ip, t * 2); else if (tp === 'tangerina') tangerina(ip, t * 2); else bombinha(ip, t * 2, t);
