@@ -108,6 +108,17 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 #wrap.cheia #sair { display: block; }
 .esconde { display: none !important; }
 body.travado { overflow: hidden; }
+.palco { position: relative; width: 100%; display: flex; justify-content: center; padding-block: 10px; }
+.palco .celular { position: relative; z-index: 1; }
+.raios { position: absolute; left: 50%; top: 50%; width: 900px; height: 900px; margin: -450px 0 0 -450px; pointer-events: none; z-index: 0;
+  background: repeating-conic-gradient(from 0deg, rgba(255,214,90,.30) 0deg 8deg, rgba(255,214,90,0) 8deg 16deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0, rgba(0,0,0,.9) 22%, rgba(0,0,0,.4) 42%, transparent 62%);
+          mask-image: radial-gradient(circle, #000 0, rgba(0,0,0,.9) 22%, rgba(0,0,0,.4) 42%, transparent 62%);
+  animation: raiosGira 40s linear infinite; }
+.raios::after { content: ""; position: absolute; left: 50%; top: 50%; width: 460px; height: 460px; margin: -230px 0 0 -230px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,236,160,.6), rgba(255,170,60,.2) 45%, transparent 70%); }
+.heroi { overflow-x: clip; }
+@keyframes raiosGira { to { transform: rotate(360deg); } }
 #chuva { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .topo { z-index: 20; } main { position: relative; z-index: 1; }
 
@@ -186,6 +197,8 @@ body.travado { overflow: hidden; }
     <div class="miolo">
       <h1 class="titulo-grande"><span class="l1">O JOGUE E GANHE</span><span class="l2">VOLTOU!</span></h1>
       <p class="lead">Colete moedas e ganhe até<strong class="destaque">100 RODADAS GRÁTIS</strong></p>
+      <div class="palco">
+      <div class="raios" aria-hidden="true"></div>
       <div class="celular">
         <div class="tela-cel">
           <div id="wrap">
@@ -197,6 +210,7 @@ body.travado { overflow: hidden; }
   <button id="bP" class="esconde" aria-label="Pausar">❚❚</button>
 </div></div>
         </div>
+      </div>
       </div>
       <p class="linha-info">🎁 Moedas · Rodadas grátis · Recorde</p>
       <div class="tag18">
