@@ -411,7 +411,13 @@ function faisca(x, y, cor, n=10) {
   for (let i = 0; i < n; i++) { const a = Math.random()*Math.PI*2, v = 150 + Math.random()*350;
     S.parts.push({ x, y, vx:Math.cos(a)*v, vy:Math.sin(a)*v - 200, vida:.55, max:.55, cor, s:6 + Math.random()*7 }); }
 }
-function texto(x, y, t, cor='#fff', tam=46) { S.textos.push({ x, y, t, cor, tam, vida:.8 }); }
+// texto de coleta no estilo da tela final (letra de cartaz dourada/vermelha + faixa), com "pop" de entrada
+// estilo: 'ouro' | 'vermelho' | 'laranja' | 'verde'
+function texto(x, y, t, estilo = 'ouro', tam = 64, faixa = '') {
+  x = Math.max(130, Math.min(W - 130, x));
+  if (S.textos.length > 3) S.textos.shift();
+  S.textos.push({ x, y, t, estilo, tam, faixa, vida: .85, max: .85, rot: (Math.random() - .5) * .14 });
+}
 
 // ---------- atualização ----------
 function atualiza(dt) {
@@ -420,7 +426,7 @@ function atualiza(dt) {
   S.t += dt;
   const nivelAntes = Math.floor((S.t - dt) / 20), nivelAgora = Math.floor(S.t / 20);
   S.vel = Math.min(34, 11 + S.t * .22);
-  if (nivelAgora > nivelAntes) { texto(W/2, 420, 'MAIS RÁPIDO!', '#ffe07a', 64); bip(660,.12,'square',.08); setTimeout(() => bip(990,.18,'square',.08), 110); }
+  if (nivelAgora > nivelAntes) { texto(W/2, 430, 'MAIS RÁPIDO!', 'vermelho', 54); bip(660,.12,'square',.08); setTimeout(() => bip(990,.18,'square',.08), 110); }
   const dz = S.vel * dt; S.dist += dz;
   S.pontos = Math.floor(S.dist * 2) + S.moedas * 10;
 
@@ -470,7 +476,7 @@ function atualiza(dt) {
     else if (o.tipo === 'carroca') bateu = S.py < .95;
     if (bateu) {
       o.feito = true; S.vidas--; S.inv = 1.5; S.treme = .35; S.flash = .3; S.combo = 0; SOM.bate();
-      faisca(pp.x, pp.y - 120, '#ffffff', 16); texto(pp.x, pp.y - 300, 'AI!', '#ff5a5a', 64);
+      faisca(pp.x, pp.y - 120, '#ffffff', 16); texto(pp.x, pp.y - 260, 'AI!', 'vermelho', 54);
       if (S.vidas <= 0) { modo = 'fim'; mostraBotoes(false); SOM.fim();
         if (S.pontos > recorde) { recorde = S.pontos; S.novoRecorde = true; try { localStorage.setItem('rodadasGratisRecorde', recorde); } catch(e) {} } }
     }
@@ -479,21 +485,21 @@ function atualiza(dt) {
   S.dobro = Math.max(0, (S.dobro || 0) - dt);
   S.parts.forEach(q => { q.x += q.vx*dt; q.y += q.vy*dt; q.vy += 900*dt; q.vida -= dt; });
   S.parts = S.parts.filter(q => q.vida > 0);
-  S.textos.forEach(t => { t.y -= 110*dt; t.vida -= dt; });
+  S.textos.forEach(t => { t.y -= 70*dt; t.vida -= dt; });
   S.textos = S.textos.filter(t => t.vida > 0);
 }
 function pega(o, pp) {
   o.feito = true; S.combo++; S.comboT = 1.2;
   const p = proj(o.pf * LW, o.y, o.z);
   const x2 = S.dobro > 0 ? 2 : 1;
-  const fx = (n, txt, cor, c1, c2) => { S.moedas += n * x2; if (x2 > 1) txt += ' x2'; faisca(p.x, p.y, c1, 16); faisca(p.x, p.y, c2, 10); texto(p.x, p.y - 40, txt, cor, 44); };
-  if (o.tipo === 'envelope') { SOM.envelope(); fx(5, '+5 • Envelope!', '#ff7070', '#ff3b3b', '#ffd23a'); }
-  else if (o.tipo === 'lingote') { SOM.envelope(); fx(3, '+3 • Lingote!', '#ffe07a', '#ffd23a', '#fff6c0'); }
-  else if (o.tipo === 'bolsa') { SOM.envelope(); setTimeout(SOM.envelope, 220); fx(10, '+10 • Bolsa da Sorte!', '#ffe07a', '#ff3b3b', '#ffd23a'); S.treme = .15; }
+  const fx = (n, nome, estilo, c1, c2) => { S.moedas += n * x2; faisca(p.x, p.y, c1, 16); faisca(p.x, p.y, c2, 10); texto(p.x, p.y - 50, '+' + n * x2, estilo, n >= 10 ? 48 : 42, nome + (x2 > 1 ? ' x2' : '')); };
+  if (o.tipo === 'envelope') { SOM.envelope(); fx(5, 'ENVELOPE!', 'vermelho', '#ff3b3b', '#ffd23a'); }
+  else if (o.tipo === 'lingote') { SOM.envelope(); fx(3, 'LINGOTE!', 'ouro', '#ffd23a', '#fff6c0'); }
+  else if (o.tipo === 'bolsa') { SOM.envelope(); setTimeout(SOM.envelope, 220); fx(10, 'BOLSA DA SORTE!', 'ouro', '#ff3b3b', '#ffd23a'); S.treme = .15; }
   else if (o.tipo === 'tangerina') { bip(660,.3,'triangle',.14,990);
-    if (S.vidas < 3) { S.vidas++; faisca(p.x, p.y, '#ff9a2a', 16); texto(p.x, p.y - 40, '+1 VIDA', '#ffb35a', 48); } else fx(2, '+2 • Tangerina', '#ffb35a', '#ff9a2a', '#3fae5a'); }
-  else if (o.tipo === 'bombinha') { S.dobro = 6; bip(400,.5,'sine',.14,1200); faisca(p.x, p.y, '#ff4a2a', 22); faisca(p.x, p.y, '#ffd23a', 14); texto(p.x, p.y - 40, 'MOEDAS EM DOBRO!', '#ffe07a', 48); }
-  else { S.moedas += x2; SOM.moeda(S.combo); faisca(p.x, p.y, '#ffd23a', 7); if (S.combo % 10 === 0) texto(W/2, 360, S.combo + ' seguidas!', '#ffe07a', 50); }
+    if (S.vidas < 3) { S.vidas++; faisca(p.x, p.y, '#ff9a2a', 16); texto(p.x, p.y - 50, '+1 VIDA', 'verde', 42, 'TANGERINA!'); } else fx(2, 'TANGERINA!', 'laranja', '#ff9a2a', '#3fae5a'); }
+  else if (o.tipo === 'bombinha') { S.dobro = 6; bip(400,.5,'sine',.14,1200); faisca(p.x, p.y, '#ff4a2a', 22); faisca(p.x, p.y, '#ffd23a', 14); texto(p.x, p.y - 50, 'x2', 'ouro', 50, 'MOEDAS EM DOBRO!'); }
+  else { S.moedas += x2; SOM.moeda(S.combo); faisca(p.x, p.y, '#ffd23a', 7); }
 }
 
 // ---------- desenho ----------
@@ -1026,6 +1032,37 @@ function telaFinal(t) {
   g.restore();
 }
 
+
+const PALETA = {
+  ouro:     { topo: ['#fff6b0', '#ffd23a'], base: '#e88a10', cont: '#7a1410' },
+  vermelho: { topo: ['#ffb09a', '#ff3a2a'], base: '#c00c14', cont: '#4a0808' },
+  laranja:  { topo: ['#ffe6a8', '#ffa53a'], base: '#e0600a', cont: '#6a1a08' },
+  verde:    { topo: ['#e2ffc0', '#5fe07a'], base: '#1f9a3c', cont: '#0e3a18' },
+};
+function desenhaTexto(x) {
+  const idade = x.max - x.vida;
+  // pop: cresce rápido, passa um pouco do tamanho e assenta
+  const esc = idade < .1 ? .3 + idade / .1 * .95 : idade < .2 ? 1.25 - (idade - .1) / .1 * .25 : 1;
+  const alfa = Math.min(1, x.vida * 3);
+  const pal = PALETA[x.estilo] || PALETA.ouro;
+  g.save(); g.globalAlpha = alfa; g.translate(x.x, x.y); g.rotate(x.rot); g.scale(esc, esc);
+  // brilho atrás
+  const br = g.createRadialGradient(0, -x.tam * .35, 4, 0, -x.tam * .35, x.tam * 1.3);
+  br.addColorStop(0, 'rgba(255,240,170,.35)'); br.addColorStop(1, 'rgba(255,220,120,0)');
+  g.fillStyle = br; g.fillRect(-x.tam * 1.6, -x.tam * 1.7, x.tam * 3.2, x.tam * 2.7);
+  textoCartaz(x.t, 0, 0, x.tam, pal.topo, pal.base, pal.cont);
+  if (x.faixa) {   // faixa vermelha com borda dourada, igual "GIROS GRÁTIS"
+    const ft = Math.round(x.tam * .5); g.font = `${ft}px ${FT}`;
+    const lw = g.measureText(x.faixa).width + ft * 1.3, fy = ft * .55, fh = ft * 1.35;
+    g.fillStyle = '#e0a526'; rr(-lw / 2 - 4, fy - 4, lw + 8, fh + 8, (fh + 8) / 2); g.fill();
+    const gf = g.createLinearGradient(0, fy, 0, fy + fh); gf.addColorStop(0, '#e8322b'); gf.addColorStop(1, '#a8141a');
+    g.fillStyle = gf; rr(-lw / 2, fy, lw, fh, fh / 2); g.fill();
+    g.textAlign = 'center'; g.lineJoin = 'round'; g.lineWidth = ft * .22; g.strokeStyle = '#5a0c0c';
+    g.strokeText(x.faixa, 0, fy + fh * .74); g.fillStyle = '#fff6e0'; g.fillText(x.faixa, 0, fy + fh * .74);
+  }
+  g.restore();
+}
+
 let ultimo = performance.now();
 function quadro(agora) {
   const dt = Math.min(.033, (agora - ultimo) / 1000); ultimo = agora; const t = agora / 1000;
@@ -1054,7 +1091,7 @@ function quadro(agora) {
 
   S.parts.forEach(q => { g.globalAlpha = q.vida / q.max; g.fillStyle = q.cor; g.fillRect(q.x - q.s/2, q.y - q.s/2, q.s, q.s); });
   g.globalAlpha = 1;
-  S.textos.forEach(x => { g.globalAlpha = Math.min(1, x.vida * 2); g.textAlign = 'center'; g.font = x.tam + 'px "Arial Black",sans-serif'; g.lineWidth = 7; g.strokeStyle = '#4a1010'; g.strokeText(x.t, x.x, x.y); g.fillStyle = x.cor; g.fillText(x.t, x.x, x.y); });
+  S.textos.forEach(desenhaTexto);
   g.globalAlpha = 1;
   g.restore();
   if (S.flash > 0) { g.fillStyle = `rgba(255,40,40,${S.flash})`; g.fillRect(0, 0, W, H); }
@@ -1085,7 +1122,7 @@ window.__jogo = {
     else if (tipo === 'tangerina') tangerina(p, t * 2); else bombinha(p, t * 2, t);
     g = antigo;
   },
-  estado: () => ({ modo, pontos:S.pontos, moedas:S.moedas, vidas:S.vidas, objs:S.objs.length, vel:S.vel, pista:S.pista, py:S.py }) };
+  demoTexto: (...a) => texto(...a), estado: () => ({ modo, pontos:S.pontos, moedas:S.moedas, vidas:S.vidas, objs:S.objs.length, vel:S.vel, pista:S.pista, py:S.py }) };
 })();
 
 </script>
